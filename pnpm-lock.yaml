@@ -87,8 +87,8 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0(winston@3.11.0)
       ws:
-        specifier: ^4.0.0
-        version: 4.1.0
+        specifier: ^5.2.4
+        version: 5.2.4
     devDependencies:
       '@types/node':
         specifier: ^20.11.16
@@ -2723,8 +2723,8 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
-  ws@4.1.0:
-    resolution: {integrity: sha512-ZGh/8kF9rrRNffkLFV4AzhvooEclrOH0xaugmqGsIfFgOE/pIz4fMc4Ef+5HSQqTEug2S9JZIWDR47duDSLfaA==}
+  ws@5.2.4:
+    resolution: {integrity: sha512-fFCejsuC8f9kOSu9FYaOw8CdO68O3h5v0lg4p74o8JqWpwTf9tniOD+nOB78aWoVSS6WptVUmDrp/KPsMVBWFQ==}
     peerDependencies:
       bufferutil: ^4.0.1
       utf-8-validate: ^5.0.2
@@ -5543,10 +5543,9 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  ws@4.1.0:
+  ws@5.2.4:
     dependencies:
       async-limiter: 1.0.1
-      safe-buffer: 5.1.2
 
   xtend@4.0.2: {}
 
