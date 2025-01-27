@@ -1,6 +1,7 @@
-import REPL from "repl";
+import REPL from "node:repl";
 
 import { Command } from "../Command.js";
+import process from "node:process";
 
 class ConsoleCommand extends Command {
 	constructor() {

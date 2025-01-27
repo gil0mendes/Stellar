@@ -1,4 +1,4 @@
-import { flatten, values, pipe } from "ramda";
+import { flatten, pipe, values } from "ramda";
 
 /**
  * This contains all the protected keys, that can not be modified by the mod
@@ -77,46 +77,38 @@ class Actions {
 	 *
 	 * @param actionName  Name of the action to be called.
 	 * @param params      Action parameters.
-	 * @return Promise
 	 */
-	call(actionName, params = {}) {
-		// get connection class
+	async call(actionName, params = {}) {
 		const ConnectionClass = this.api.connection;
 
-		// create a new connection object
+		// create a new internal connection object
 		const connection = new ConnectionClass(this.api, {
 			type: "internal",
 			remotePort: 0,
-			remoteIP: 0,
+			remoteHostname: 0,
 			rawConnection: {},
 		});
 
 		// set connection params
 		connection.params = params;
-
-		// set action who must be called
 		connection.params.action = actionName;
 
-		// get action processor class
+		// create a new ActionProcessor instance
 		const ActionProcessor = this.api.actionProcessor;
+		const actionProcessor = new ActionProcessor(
+			this.api,
+			connection,
+		);
 
-		// return a promise
-		return new Promise((resolve, reject) => {
-			// create a new ActionProcessor instance
-			const actionProcessor = new ActionProcessor(this.api, connection, (data) => {
-				// destroy the connection and resolve of reject the promise
-				connection.destroy(() => {
-					if (data.response.error !== undefined) {
-						return reject(data.response.error);
-					}
+		const data = await actionProcessor.processAction();
 
-					resolve(data.response);
-				});
-			});
+		// destroy the connection and resolve of reject the promise
+		connection.destroy();
+		if (data.response.error !== undefined) {
+			throw data.response.error;
+		}
 
-			// process the action
-			actionProcessor.processAction();
-		});
+		return data.response;
 	}
 
 	/**
@@ -149,7 +141,7 @@ class Actions {
 
 	async loadAction(actionFilePath, moduleName, action, reload = false) {
 		const loadMessage = (action) => {
-			let level = reload ? "info" : "debug";
+			const level = reload ? "info" : "debug";
 			let msg = null;
 
 			if (reload) {
@@ -167,7 +159,10 @@ class Actions {
 		}
 
 		// if the action not exists create a new entry on the hash map
-		if (this.actions[action.name] === null || this.actions[action.name] === undefined) {
+		if (
+			this.actions[action.name] === null ||
+			this.actions[action.name] === undefined
+		) {
 			this.actions[action.name] = {};
 		}
 
@@ -192,7 +187,10 @@ class Actions {
 
 		// put the action on correct version slot
 		this.actions[action.name][action.version] = action;
-		if (this.versions[action.name] === null || this.versions[action.name] === undefined) {
+		if (
+			this.versions[action.name] === null ||
+			this.versions[action.name] === undefined
+		) {
 			this.versions[action.name] = [];
 		}
 		this.versions[action.name].push(action.version);
@@ -224,11 +222,13 @@ class Actions {
 			this.api.routes.loadRoutes();
 		});
 
-		let action = null;
+		const action = null;
 
 		try {
 			// a single action file may contain multiple action definitions so we make sure that we load everything
-			const moduleExportSymbols = await import(`${fullFilePath}?cache=${Date.now()}`);
+			const moduleExportSymbols = await import(
+				`${fullFilePath}?cache=${Date.now()}`
+			);
 			const collection = pipe(values, flatten)(moduleExportSymbols);
 
 			for (const action of collection) {
@@ -253,7 +253,7 @@ class Actions {
 	 */
 	validateAction(action) {
 		// fail function
-		let fail = (msg) => this.api.log(msg, "error");
+		const fail = (msg) => this.api.log(msg, "error");
 
 		// initialize inputs property
 		if (action.inputs === undefined) {
@@ -274,14 +274,22 @@ class Actions {
 		if (typeof action.name !== "string" || action.name.length < 1) {
 			fail("an action is missing 'action.name'");
 			return false;
-		} else if (typeof action.description !== "string" || action.description.length < 1) {
+		} else if (
+			typeof action.description !== "string" ||
+			action.description.length < 1
+		) {
 			fail(`Action ${action.name} is missing 'action.description'`);
 			return false;
 		} else if (typeof action.run !== "function") {
 			fail(`Action ${action.run} has no run method`);
 			return false;
-		} else if (this.api.connections !== null && this.api.connections.allowedVerbs.indexOf(action.name) >= 0) {
-			fail(`${action.run} is a reserved verb for connections. Choose a new name`);
+		} else if (
+			this.api.connections !== null &&
+			this.api.connections.allowedVerbs.indexOf(action.name) >= 0
+		) {
+			fail(
+				`${action.run} is a reserved verb for connections. Choose a new name`,
+			);
 			return false;
 		} else {
 			return true;
@@ -334,8 +342,8 @@ class Actions {
 		 *
 		 * @param middleware  Middleware object
 		 */
-		let loadMessage = (middleware) => {
-			let level = reload ? "info" : "debug";
+		const loadMessage = (middleware) => {
+			const level = reload ? "info" : "debug";
 			let msg = null;
 
 			if (reload) {
@@ -353,12 +361,12 @@ class Actions {
 		// try load the middleware
 		try {
 			// load middleware file
-			let collection = await import(path);
+			const collection = await import(path);
 
 			// iterate all collection definitions
-			for (let index in collection) {
+			for (const index in collection) {
 				// get middleware object
-				let middleware = collection[index];
+				const middleware = collection[index];
 
 				// try load middleware object
 				this.addMiddleware(middleware);
@@ -399,7 +407,9 @@ class Actions {
 			if (Array.isArray(group.modules)) {
 				// iterate all groups and for each one load the actions
 				group.modules.forEach((groupName) => {
-					actions = actions.concat(this.api.modules.moduleActions.get(groupName) || []);
+					actions = actions.concat(
+						this.api.modules.moduleActions.get(groupName) || [],
+					);
 				});
 			}
 
@@ -558,13 +568,17 @@ export default class {
 		// iterate all modules and load all actions
 		for (const [moduleName, modulePath] of api.modules.modulesPaths) {
 			// load modules middleware
-			const middlewarePaths = api.utils.recursiveDirectoryGlob(`${modulePath}/middleware`);
+			const middlewarePaths = api.utils.recursiveDirectoryGlob(
+				`${modulePath}/middleware`,
+			);
 			for (const path of middlewarePaths) {
 				await api.actions.loadMiddlewareFromFile(path);
 			}
 
 			// get all files from the module "actions" folder
-			const actionFiles = api.utils.recursiveDirectoryGlob(`${modulePath}/actions`);
+			const actionFiles = api.utils.recursiveDirectoryGlob(
+				`${modulePath}/actions`,
+			);
 			for (const actionFile of actionFiles) {
 				await api.actions.loadFile(actionFile, moduleName);
 			}

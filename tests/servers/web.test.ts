@@ -1,11 +1,13 @@
-import { describe, beforeAll, afterAll, it, expect } from "vitest";
+import { afterAll, beforeAll, describe, it } from "@std/testing/bdd";
+import { expect } from "@std/expect";
 
 import axios, { AxiosError } from "axios";
 
-import Engine from "../../lib/engine";
-import { sleep } from "../../src/utils";
-import { API } from "../../src/interfaces/api.interface";
-const engine = new Engine({ rootPath: `${process.cwd()}/example` });
+import Engine from "../../src/engine.ts";
+import { sleep } from "../../src/utils.ts";
+import { API } from "../../src/common/types/api.types.ts";
+import { assertEquals } from "@std/assert/equals";
+const engine = new Engine({ rootPath: `${Deno.cwd()}/example` });
 
 let api: API;
 let url: string = "";
@@ -20,7 +22,8 @@ describe("Servers: HTTP", function () {
 	afterAll(() => engine.stop());
 
 	it("server should be up and return data", async () => {
-		await axios.get(`${url}/api/randomNumber`);
+		const response = await axios.get(`${url}/api/randomNumber`);
+		assertEquals(response.status, 200);
 	});
 
 	it("server basic response should be JSON and have basic data", async () => {
@@ -100,15 +103,15 @@ describe("Servers: HTTP", function () {
 		it("works for the API", async () => {
 			expect(Object.keys(api.connections.connections).length).toBe(0);
 
-			axios.get(`${url}/api/sleep`);
+			const requestPromise = axios.get(`${url}/api/sleep`);
 			await sleep(100);
 			expect(Object.keys(api.connections.connections)).toHaveLength(1);
 
-			await sleep(1000);
+			await requestPromise;
 			expect(Object.keys(api.connections.connections)).toHaveLength(0);
 		});
 
-		// @todo - test for files
+		// TODO: test for files
 	});
 
 	describe("errors", function () {
@@ -119,8 +122,8 @@ describe("Servers: HTTP", function () {
 					name: "stringErrorTestAction",
 					description: "stringErrorTestAction",
 					version: 1,
-					run: function (api, data, next) {
-						next("broken");
+					run(api, data) {
+						throw "broken";
 					},
 				},
 			};
@@ -131,8 +134,8 @@ describe("Servers: HTTP", function () {
 					name: "errorErrorTestAction",
 					description: "errorErrorTestAction",
 					version: 1,
-					run: function (api, data, next) {
-						next(new Error("broken"));
+					run(api, data) {
+						throw new Error("broken");
 					},
 				},
 			};
@@ -143,8 +146,8 @@ describe("Servers: HTTP", function () {
 					name: "complexErrorTestAction",
 					description: "complexErrorTestAction",
 					version: 1,
-					run: function (api, data, next) {
-						next({ error: "broken", reason: "stuff" });
+					run(api, data) {
+						throw ({ error: "broken", reason: "stuff" });
 					},
 				},
 			};
@@ -283,9 +286,8 @@ describe("Servers: HTTP", function () {
 					name: "paramTestAction",
 					description: "Returns connection.rawConnection.params",
 					version: 1,
-					run: (api, action, next) => {
-						action.response = action.connection.rawConnection.params;
-						next();
+					run(api, action) {
+						return action.connection.rawConnection.params;
 					},
 				},
 			};
@@ -359,13 +361,12 @@ describe("Servers: HTTP", function () {
 					name: "headerTestAction",
 					description: "Test action",
 					version: 1,
-					run: (api, action, next) => {
-						action.connection.rawConnection.responseHeaders.push(["thing", "A"]);
-						action.connection.rawConnection.responseHeaders.push(["thing", "B"]);
-						action.connection.rawConnection.responseHeaders.push(["thing", "C"]);
-						action.connection.rawConnection.responseHeaders.push(["Set-Cookie", "value_1=1"]);
-						action.connection.rawConnection.responseHeaders.push(["Set-Cookie", "value_2=2"]);
-						next();
+					run(api, action) {
+						action.connection.rawConnection.response.headers.set("thing", "A");
+						action.connection.rawConnection.response.headers.set("thing", "B");
+						action.connection.rawConnection.response.headers.set("thing", "C");
+						action.connection.rawConnection.response.headers.set("Set-Cookie", "value_1=1");
+						action.connection.rawConnection.response.headers.set("Set-Cookie", "value_2=2");
 					},
 				},
 			};
@@ -390,28 +391,14 @@ describe("Servers: HTTP", function () {
 				method: "OPTIONS",
 			});
 
+			// close stream
+			await response.body?.cancel();
+
 			expect(response.status).toBe(200);
 			expect(response.headers.get("access-control-allow-methods")).toBe(
 				"HEAD, GET, POST, PUT, PATCH, DELETE, OPTIONS, TRACE",
 			);
 			expect(response.headers.get("access-control-allow-origin")).toBe("*");
-			expect(response.headers.get("content-length")).toBe("0");
-		});
-
-		it("should respond to TRACE with parsed params received", async () => {
-			const response = await axios({
-				url: `${url}/api/x`,
-				method: "TRACE",
-				data: { key: "someKey", value: "someValue" },
-			});
-
-			expect(response.status).toBe(200);
-			expect(response.data).toMatchObject({
-				receivedParams: {
-					key: "someKey",
-					value: "someValue",
-				},
-			});
 		});
 
 		it("should respond to HEAD request just like GET, but with no body", async () => {

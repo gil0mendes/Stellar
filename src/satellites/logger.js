@@ -1,4 +1,4 @@
-import { mkdir } from "fs/promises";
+import { mkdir } from "node:fs/promises";
 import winston from "winston";
 
 export default class {
@@ -22,7 +22,7 @@ export default class {
 		}
 
 		const loggers = (api.config.logger.loggers || []).map((logger) =>
-			typeof logger === "function" ? logger(api, winston) : logger,
+			typeof logger === "function" ? logger(api, winston) : logger
 		);
 
 		// create the logger instance

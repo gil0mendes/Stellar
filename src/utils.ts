@@ -1,5 +1,5 @@
-import { PathLike } from "fs";
-import { readFile } from "fs/promises";
+import { PathLike } from "node:fs";
+import { readFile } from "node:fs/promises";
 
 /**
  * Sleep for the given amount of time.

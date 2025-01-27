@@ -1,4 +1,4 @@
-exports.render = _ => `
+exports.render = (_) => `
 // var to store the Stellar's API object
 let api = null
 
@@ -23,4 +23,4 @@ describe('Your awesome feature', () => {
   })
 
 })
-`
+`;

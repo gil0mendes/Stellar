@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
-import { Queue, Scheduler, MultiWorker } from "node-resque";
+import { MultiWorker, Queue, Scheduler } from "node-resque";
 import { filterObjectForLogging } from "../utils.js";
 
 /**
@@ -151,15 +151,15 @@ class ResqueManager {
 		this.multiWorker.on("start", (workerId) =>
 			this.api.log("[ worker ] started", this.workerLogging.start, {
 				workerId,
-			}),
-		);
+			}));
 		this.multiWorker.on("end", (workerId) =>
 			this.api.log("[ worker ]: ended", this.workerLogging.end, {
 				workerId,
-			}),
-		);
-		this.multiWorker.on("cleaning_worker", (workerId, worker, pid) =>
-			this.api.log(`[ worker ]: cleaning old worker ${worker}, (${pid})`, this.workerLogging.cleaning_worker),
+			}));
+		this.multiWorker.on(
+			"cleaning_worker",
+			(workerId, worker, pid) =>
+				this.api.log(`[ worker ]: cleaning old worker ${worker}, (${pid})`, this.workerLogging.cleaning_worker),
 		);
 		this.multiWorker.on("poll", (workerId, queue) => {
 			this.api.log(`[ worker ] polling ${queue}`, this.api.config.tasks.workerLogging.poll, {
@@ -167,30 +167,34 @@ class ResqueManager {
 			});
 		});
 		// for debug: this.multiWorker.on('poll', (queue) => this.api.log(`[ worker ]: polling ${queue}`, this.workerLogging.poll))
-		this.multiWorker.on("job", (workerId, queue, job) =>
-			this.api.log(`[ worker ]: working job ${queue}`, this.workerLogging.job, {
-				workerId,
-				class: job.class,
-				queue: job.queue,
-				args: JSON.stringify(filterObjectForLogging(job.args[0])),
-			}),
+		this.multiWorker.on(
+			"job",
+			(workerId, queue, job) =>
+				this.api.log(`[ worker ]: working job ${queue}`, this.workerLogging.job, {
+					workerId,
+					class: job.class,
+					queue: job.queue,
+					args: JSON.stringify(filterObjectForLogging(job.args[0])),
+				}),
 		);
-		this.multiWorker.on("reEnqueue", (workerId, queue, job, plugin) =>
-			this.api.log("[ worker ]: reEnqueue job", this.workerLogging.reEnqueue, {
-				workerId,
-				plugin: JSON.stringify(plugin),
-				class: job.class,
-				queue: job.queue,
-			}),
+		this.multiWorker.on(
+			"reEnqueue",
+			(workerId, queue, job, plugin) =>
+				this.api.log("[ worker ]: reEnqueue job", this.workerLogging.reEnqueue, {
+					workerId,
+					plugin: JSON.stringify(plugin),
+					class: job.class,
+					queue: job.queue,
+				}),
 		);
 		this.multiWorker.on("pause", (workerId) =>
 			this.api.log("[ worker ]: paused", this.workerLogging.pause, {
 				workerId,
-			}),
-		);
+			}));
 
-		this.multiWorker.on("failure", (workerId, queue, job, failure) =>
-			this.api.exceptionHandlers.task(failure, queue, job, workerId),
+		this.multiWorker.on(
+			"failure",
+			(workerId, queue, job, failure) => this.api.exceptionHandlers.task(failure, queue, job, workerId),
 		);
 		this.multiWorker.on("error", (error, workerId, queue, job) => {
 			this.api.exceptionHandlers.task(error, queue, job, workerId);

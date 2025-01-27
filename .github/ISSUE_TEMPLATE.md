@@ -20,6 +20,7 @@ Remove the template from below and provide thoughtful commentary *and code sampl
 -->
 
 <!-- BUG REPORT TEMPLATE -->
+
 ### Running System
 
 - Stellar Version: `1.0.x`

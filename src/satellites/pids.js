@@ -1,5 +1,5 @@
-import fs from "fs";
-import cluster from "cluster";
+import fs from "node:fs";
+import cluster from "node:cluster";
 
 class Pids {
 	/**

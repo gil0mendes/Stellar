@@ -1,4 +1,4 @@
-exports.render = _ => `
+exports.render = (_) => `
 exports.default = api => {
   const newModel = {
     attributes: {
@@ -8,4 +8,4 @@ exports.default = api => {
 
   return newModel
 }
-`
+`;

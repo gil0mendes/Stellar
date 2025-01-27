@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 
-import { resolve } from "path";
+import { resolve } from "node:path";
 
-import { fetchJsonFile } from "../utils.js";
+import { fetchJsonFile } from "../utils.ts";
 
 let Messages = {};
 const fetchMessages = async () => {
@@ -468,9 +468,10 @@ class Validator {
 	 * @returns {boolean}
 	 */
 	validatorEmail(value) {
-		return /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(
-			value,
-		);
+		return /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+			.test(
+				value,
+			);
 	}
 
 	/**

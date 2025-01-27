@@ -1,11 +1,17 @@
+import { isNotNil } from "ramda-adjunct";
+
+const TCP_DEFAULT_PORT = 25001;
+
 export default {
 	servers: {
 		tcp() {
+			const isTcpServerEnabled = isNotNil(Deno.env.get("ENABLE_TCP_SERVER"));
+
 			return {
 				// ---------------------------------------------------------------------
-				// Enable server?
+				// Enable tcp server?
 				// ---------------------------------------------------------------------
-				enable: process.env.ENABLE_TCP_SERVER !== undefined,
+				enable: isTcpServerEnabled,
 
 				// ---------------------------------------------------------------------
 				// TCP or TLS?
@@ -18,12 +24,21 @@ export default {
 				// passed to tls.createServer if secure=true, should contain SSL
 				// certificates.
 				// ---------------------------------------------------------------------
-				serverOptions: {},
+				serverOptions: {
+					// ---------------------------------------------------------------------
+					// Certificate to be used on the TLS connection
+					// ---------------------------------------------------------------------
+					// certFile: "server.crt",
+					// ---------------------------------------------------------------------
+					// Private key to be used on the TLS connection
+					// ---------------------------------------------------------------------
+					// keyFile: "server.key",
+				},
 
 				// ---------------------------------------------------------------------
 				// Server port
 				// ---------------------------------------------------------------------
-				port: 5000,
+				port: 5001,
 
 				// ---------------------------------------------------------------------
 				// IP to listen on
@@ -61,9 +76,12 @@ export default {
 export const test = {
 	servers: {
 		tcp() {
+			const tcpPort = Deno.env.get("PORT");
+			const vitestWorkerId = Deno.env.get("VITEST_WORKER_ID");
+
 			return {
 				enabled: true,
-				port: process.env.PORT ? process.env.PORT : 25001 + parseInt(process.env.VITEST_WORKER_ID || "0"),
+				port: tcpPort ?? TCP_DEFAULT_PORT + parseInt(vitestWorkerId ?? "0"),
 				secure: false,
 			};
 		},

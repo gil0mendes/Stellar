@@ -1,9 +1,9 @@
 import async from "async";
-import cluster from "cluster";
-import fs from "fs/promises";
+import cluster from "node:cluster";
+import fs from "node:fs/promises";
 import isRunning from "is-running";
-import os from "os";
-import path from "path";
+import os from "node:os";
+import path from "node:path";
 import winston from "winston";
 
 import { Command } from "../Command.js";
@@ -107,9 +107,7 @@ class Worker {
 		this.worker.send("stopProcess");
 	}
 
-	/**
-	 *
-	 */
+	/** */
 	restart() {
 		this.worker.send("restart");
 	}

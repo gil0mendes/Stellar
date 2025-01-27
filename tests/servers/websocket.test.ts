@@ -1,11 +1,11 @@
-import { describe, beforeAll, afterAll, it, expect, afterEach, beforeEach } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, unused-imports/no-unused-imports
 import Primus from "primus";
 
-import Engine from "../../lib/engine";
+import Engine from "../../src/engine";
 import { sleep } from "../../src/utils";
-import { API } from "../../src/interfaces/api.interface";
+import { API } from "../../src/common/types/api.types.ts";
 const engine = new Engine({ rootPath: `${process.cwd()}/example` });
 
 let api: API;
@@ -134,7 +134,7 @@ describe("Servers: Web Socket", function () {
 	// We are using the Stellar Client library, so we must the able to call over the limit of simultaneous connections
 	// because we have a mechanism that keep a queue os pending requests
 	it("will limit how many simultaneous connections a client can have", async () => {
-		const responses: Record<string, any>[] = [];
+		const responses: Record<string, unknown>[] = [];
 		client1.action("sleep", { sleepDuration: 100 }).then((response) => responses.push(response));
 		client1.action("sleep", { sleepDuration: 200 }).then((response) => responses.push(response));
 		client1.action("sleep", { sleepDuration: 300 }).then((response) => responses.push(response));

@@ -5,9 +5,7 @@ export default {
 	queue: "default",
 	frequency: 1000,
 
-	run(api, params, next) {
-		api.log("hello", "debug");
-
-		next();
+	run(api, params) {
+		api.log("Hello! I'm an action greeting you.", "debug");
 	},
 };

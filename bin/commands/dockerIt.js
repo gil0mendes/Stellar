@@ -1,5 +1,6 @@
 import { Command } from "../Command.js";
 import { exists, generateFileFromTemplate } from "../utils.js";
+import process from "node:process";
 
 class dockerItCommand extends Command {
 	constructor() {

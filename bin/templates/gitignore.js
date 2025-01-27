@@ -1,4 +1,4 @@
-exports.render = _ => `
+exports.render = (_) => `
 # stellar
 dist/
 temp/
@@ -22,4 +22,4 @@ npm-debug.log
 .Trashes
 ehthumbs.db
 Thumbs.db
-`
+`;

@@ -2,7 +2,7 @@ import { createVitest } from "vitest/node";
 import { Command } from "../Command.js";
 import { getAppModules, getCurrentUniverse } from "../utils.js";
 
-import Engine from "../../lib/engine.js";
+import Engine from "../../src/engine.ts";
 
 /**
  * Test command class.

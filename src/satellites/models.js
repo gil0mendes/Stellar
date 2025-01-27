@@ -1,6 +1,6 @@
 import Waterline from "waterline";
-import { basename } from "path";
-import { promisify } from "util";
+import { basename } from "node:path";
+import { promisify } from "node:util";
 import { mergeDeepRight } from "ramda";
 
 /**

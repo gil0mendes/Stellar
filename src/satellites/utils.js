@@ -1,10 +1,21 @@
 /*eslint no-useless-catch: 0 */
 
-import os from "os";
-import fs from "fs";
-import path, { join } from "path";
-import { randomBytes } from "crypto";
-import { readFile } from "fs/promises";
+import os from "node:os";
+import fs from "node:fs";
+import path, { join } from "node:path";
+import { randomBytes } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { isPlainObject } from "ramda-adjunct";
+import { both, has, propEq } from "ramda";
+
+export const EXPAND_PREVENT_KEY = "_toExpand";
+
+/**
+ * Check if the object has an expand prevent key.
+ */
+const hasPreventExpand = both(has(EXPAND_PREVENT_KEY), propEq(EXPAND_PREVENT_KEY, false));
+
+const isToExpand = (obj) => isPlainObject(obj) && !hasPreventExpand(obj);
 
 export class ExtendableError extends Error {
 	constructor(message) {
@@ -108,42 +119,48 @@ export class Utils {
 	 * Get all .js files in a directory.
 	 *
 	 * @param dir
-	 * @param extension
+	 * @param extensions
 	 * @returns {Array.<T>}
 	 */
-	recursiveDirectoryGlob(dir, extension = "js") {
-		var results = [];
+	recursiveDirectoryGlob(dir, extensions = ["js", "ts"]) {
+		const results = [];
 
-		extension = extension.replace(".", "");
+		extensions = extensions.map((ext) => ext.replace(".", ""));
+
 		if (dir[dir.length - 1] !== "/") {
 			dir += "/";
 		}
 
-		if (fs.existsSync(dir)) {
-			fs.readdirSync(dir).forEach((file) => {
-				let fullFilePath = path.normalize(dir + file);
-				if (file[0] !== ".") {
-					// ignore 'system' files
-					let stats = fs.statSync(fullFilePath);
-					let child;
-
-					if (stats.isDirectory()) {
-						child = this.recursiveDirectoryGlob(fullFilePath, extension);
-						child.forEach((c) => results.push(c));
-					} else if (stats.isSymbolicLink()) {
-						let realPath = fs.readlinkSync(fullFilePath);
-						child = this.recursiveDirectoryGlob(realPath);
-						child.forEach((c) => results.push(c));
-					} else if (stats.isFile()) {
-						let fileParts = file.split(".");
-						let ext = fileParts[fileParts.length - 1];
-						if (ext === extension) {
-							results.push(fullFilePath);
-						}
-					}
-				}
-			});
+		if (!fs.existsSync(dir)) {
+			return results;
 		}
+
+		fs.readdirSync(dir).forEach((file) => {
+			const fullFilePath = path.normalize(dir + file);
+
+			if (file[0] === ".") {
+				return;
+			}
+
+			// ignore 'system' files
+			const stats = fs.statSync(fullFilePath);
+			let child;
+
+			if (stats.isDirectory()) {
+				child = this.recursiveDirectoryGlob(fullFilePath, extensions);
+				child.forEach((c) => results.push(c));
+			} else if (stats.isSymbolicLink()) {
+				const realPath = fs.readlinkSync(fullFilePath);
+				child = this.recursiveDirectoryGlob(realPath, extensions);
+				child.forEach((c) => results.push(c));
+			} else if (stats.isFile()) {
+				const fileParts = file.split(".");
+				const ext = fileParts[fileParts.length - 1];
+				if (extensions.includes(ext)) {
+					results.push(fullFilePath);
+				}
+			}
+		});
 
 		return results.sort();
 	}
@@ -161,14 +178,14 @@ export class Utils {
 		let i, response;
 
 		for (i in a) {
-			if (this.isPlainObject(a[i])) {
+			if (isToExpand(a[i])) {
 				// can't be added into above condition, or empty objects will overwrite and not merge
 				// also make sure empty objects are created
 				c[i] = Object.keys(a[i]).length > 0 ? this.hashMerge(c[i], a[i], arg) : {};
 			} else {
 				if (typeof a[i] === "function") {
 					response = a[i](arg);
-					if (this.isPlainObject(response)) {
+					if (isToExpand(response)) {
 						c[i] = this.hashMerge(c[i], response, arg);
 					} else {
 						c[i] = response;
@@ -183,7 +200,7 @@ export class Utils {
 			}
 		}
 		for (i in b) {
-			if (this.isPlainObject(b[i])) {
+			if (isToExpand(b[i])) {
 				if (Object.keys(b[i]).length > 0) {
 					// prevent empty objects from being overwrite
 					c[i] = this.hashMerge(c[i], b[i], arg);
@@ -194,7 +211,7 @@ export class Utils {
 			} else {
 				if (typeof b[i] === "function") {
 					response = b[i](arg);
-					if (this.isPlainObject(response)) {
+					if (isToExpand(response)) {
 						c[i] = this.hashMerge(c[i], response, arg);
 					} else {
 						c[i] = response;
@@ -212,40 +229,6 @@ export class Utils {
 			}
 		}
 		return c;
-	}
-
-	/**
-	 * Check if the passed argument is a plain object.
-	 *
-	 * @param o
-	 * @returns {boolean}
-	 */
-	isPlainObject(o) {
-		let safeTypes = [Boolean, Number, String, Function, Array, Date, RegExp, Buffer];
-		let safeInstances = ["boolean", "number", "string", "function"];
-		let expandPreventMatchKey = "_toExpand"; // set `_toExpand = false` within an object if you don't want to expand it
-		let i;
-
-		if (!o) {
-			return false;
-		}
-		if (o instanceof Object === false) {
-			return false;
-		}
-		for (i in safeTypes) {
-			if (o instanceof safeTypes[i]) {
-				return false;
-			}
-		}
-		for (i in safeInstances) {
-			if (typeof o === safeInstances[i]) {
-				return false;
-			}
-		}
-		if (o[expandPreventMatchKey] === false) {
-			return false;
-		}
-		return o.toString() === "[object Object]";
 	}
 
 	/**
@@ -631,4 +614,16 @@ export default class {
 	async load(api) {
 		api.utils = new Utils(api);
 	}
+}
+
+if (import.meta.vitest) {
+	const { it, expect } = import.meta.vitest;
+
+	it("hasPreventExpand", () => {
+		expect(hasPreventExpand({ [EXPAND_PREVENT_KEY]: false })).toBeTruthy();
+		expect(hasPreventExpand({ [EXPAND_PREVENT_KEY]: true })).toBeFalsy();
+		expect(hasPreventExpand({ [EXPAND_PREVENT_KEY]: null })).toBeFalsy();
+		expect(hasPreventExpand({ other: "key" })).toBeFalsy();
+		expect(hasPreventExpand({})).toBeFalsy();
+	});
 }

@@ -1,5 +1,5 @@
-import fs from "fs";
-import { exec } from "child_process";
+import fs from "node:fs";
+import { exec } from "node:child_process";
 
 /**
  * This class is responsible to manage all modules, process

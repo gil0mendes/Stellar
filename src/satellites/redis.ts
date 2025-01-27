@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
-import { randomUUID } from "crypto";
-import { sleep } from "../utils.js";
+import { randomUUID } from "node:crypto";
+import { sleep } from "../utils.ts";
 
 /**
  * Redis manager class.

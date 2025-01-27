@@ -1,8 +1,8 @@
-import { describe, beforeAll, afterAll, it } from "vitest";
+import { afterAll, beforeAll, describe, it } from "vitest";
 
-import Engine from "../../lib/engine";
+import Engine from "../../src/engine";
 import { expect } from "vitest";
-import { API } from "../../src/interfaces/api.interface";
+import { API } from "../../src/common/types/api.types.ts";
 
 const engine = new Engine({ rootPath: `${process.cwd()}/example` });
 
@@ -17,8 +17,10 @@ describe("Test: RunAction", () => {
 
 	it("can run the task manually", async () => {
 		const response = await new Promise((resolve, reject) => {
-			api.helpers.runTask("runAction", { action: "randomNumber" }, (error, response) =>
-				!!error ? reject(error) : resolve(response),
+			api.helpers.runTask(
+				"runAction",
+				{ action: "randomNumber" },
+				(error, response) => !!error ? reject(error) : resolve(response),
 			);
 		});
 

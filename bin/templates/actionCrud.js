@@ -1,4 +1,4 @@
-exports.render = data => `
+exports.render = (data) => `
 'use strict'
 
 // constant with the inputs declaration
@@ -85,4 +85,4 @@ module.exports = [{
       .destroy({ id: params.id })
   }
 }]
-`
+`;

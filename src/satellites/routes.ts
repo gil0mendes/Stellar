@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 
-import fs from "fs/promises";
+import fs from "node:fs/promises";
 import { fetchJsonFile } from "../utils.js";
-import { join } from "path";
+import { join } from "node:path";
 
 /**
  * Class to manage the HTTP action routes.

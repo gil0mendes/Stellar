@@ -1,8 +1,9 @@
 import common from "winston/lib/winston/common.js";
-import os from "os";
+import os from "node:os";
 import { Transport } from "winston";
 import chalk from "chalk";
 import util from "util";
+import { Buffer } from "node:buffer";
 
 // List of colors for each level
 const colors = {
@@ -24,17 +25,22 @@ export default class BeautifulLogger extends Transport {
 		this.json = options.json || false;
 		this.colorize = options.colorize || false;
 		this.prettyPrint = options.prettyPrint || false;
-		this.timestamp = typeof options.timestamp !== "undefined" ? options.timestamp : false;
+		this.timestamp =
+			typeof options.timestamp !== "undefined" ? options.timestamp : false;
 		this.showLevel = options.showLevel === undefined ? true : options.showLevel;
 		this.label = options.label || null;
 		this.logstash = options.logstash || false;
 		this.depth = options.depth || null;
 		this.align = options.align || false;
-		this.stderrLevels = BeautifulLogger.setStderrLevels(options.stderrLevels, options.debugStdout);
+		this.stderrLevels = BeautifulLogger.setStderrLevels(
+			options.stderrLevels,
+			options.debugStdout,
+		);
 		this.eol = options.eol || os.EOL;
 
 		if (this.json) {
-			this.stringify = options.stringify || ((obj) => JSON.stringify(obj, null, 2));
+			this.stringify =
+				options.stringify || ((obj) => JSON.stringify(obj, null, 2));
 		}
 	}
 
@@ -149,10 +155,11 @@ export default class BeautifulLogger extends Transport {
 		}
 
 		// print output the message to the STDOUT or STDERR, depending on log level
+		const bytesToWrite = new TextEncoder().encode(`${output}${this.eol}`);
 		if (this.stderrLevels[level]) {
-			process.stderr.write(output + this.eol);
+			Deno.stderr.write(bytesToWrite);
 		} else {
-			process.stdout.write(output + this.eol);
+			Deno.stdout.write(bytesToWrite);
 		}
 
 		// Emit the `logged` event immediately because the event loop will not exit until `process.stdout` has drained

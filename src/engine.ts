@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
-import path, { join } from "path";
+import path, { join } from "node:path";
 import { Utils as UtilsClass } from "./satellites/utils.js";
-import { ensureNoTsHeaderOrSpecFiles, safeGlob } from "./utils/file.js";
+import { ensureNoTsHeaderOrSpecFiles, safeGlob } from "./utils/file.ts";
 
 // FIXME: this is a temporary workaround, we must make this more professional
 const Utils = new UtilsClass();
@@ -95,7 +94,7 @@ export default class Engine {
 
 		// finish the process execution
 		await this.stop();
-		process.exit(1);
+		Deno.exit(1);
 	}
 
 	// --------------------------------------------------------------------------- [Class]

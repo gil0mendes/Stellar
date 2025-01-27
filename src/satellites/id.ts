@@ -1,6 +1,6 @@
-import cluster from "cluster";
+import cluster from "node:cluster";
 import { fetchJsonFile } from "../utils.js";
-import { resolve } from "path";
+import { resolve } from "node:path";
 
 /**
  * Setup the server ID.
@@ -48,7 +48,7 @@ export default class {
 				try {
 					api.log(message, "crit");
 				} catch (e) {
-					console.log(message);
+					console.error(message);
 				}
 			}
 

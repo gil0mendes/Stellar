@@ -1,7 +1,9 @@
 import winston from "winston";
 import "winston-daily-rotate-file";
-import cluster from "cluster";
+import cluster from "node:cluster";
 import chalk from "chalk";
+
+const level = Deno.env.get("LOG_LEVEL") ?? "info";
 
 const colors = {
 	emerg: "Red",
@@ -91,11 +93,11 @@ function buildFileLogger(api, level = "info") {
 
 export default {
 	logger(api) {
-		let loggers = [];
+		const loggers = [];
 
 		// check if this Stellar instance is the primary node
 		if (cluster.isPrimary) {
-			loggers.push(() => buildConsoleLogger("debug"));
+			loggers.push(() => buildConsoleLogger(level));
 		}
 
 		// add a file logger

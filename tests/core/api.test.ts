@@ -1,9 +1,9 @@
-import { describe, beforeAll, afterAll, it } from "vitest";
+import { afterAll, beforeAll, describe, it } from "vitest";
 
-import Engine from "../../lib/engine";
+import Engine from "../../src/engine";
 import { expect } from "vitest";
 import { runActionPromise } from "../utils";
-import { API } from "../../src/interfaces/api.interface";
+import { API } from "../../src/common/types/api.types.ts";
 
 const engine = new Engine({ rootPath: `${process.cwd()}/example` });
 
@@ -82,9 +82,7 @@ describe("Core: API", () => {
 
 		it("will default clients to the latest version of the action", async () => {
 			return expect(
-				new Promise((resolve) => {
-					api.helpers.runAction("versionedAction", {}, resolve);
-				}),
+				api.helpers.runAction("versionedAction", {}),
 			).resolves.toMatchObject({
 				requesterInformation: {
 					receivedParams: {

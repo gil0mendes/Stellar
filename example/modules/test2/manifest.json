@@ -1,7 +1,7 @@
 {
-  "id": "test2",
-  "name": "Test Module 2",
-  "version": "1.0.0",
-  "description": "This is just another test module.",
-  "author": "Gil Mendes <gil00mendes@gmail.com>"
+	"id": "test2",
+	"name": "Test Module 2",
+	"version": "1.0.0",
+	"description": "This is just another test module.",
+	"author": "Gil Mendes <gil00mendes@gmail.com>"
 }

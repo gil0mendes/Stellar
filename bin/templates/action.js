@@ -1,4 +1,4 @@
-exports.render = data => `
+exports.render = (data) => `
 'use strict'
 
 module.exports = [{
@@ -21,4 +21,4 @@ module.exports = [{
     action.response.inputtedData = action.params
   }
 }]
-`
+`;

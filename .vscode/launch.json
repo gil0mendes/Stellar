@@ -7,7 +7,7 @@
 			"name": "Stellar Debug",
 			"program": "${workspaceFolder}/bin/stellar run",
 			"preLaunchTask": "npm: build",
-			"outFiles": ["${workspaceFolder}/lib/**/*.js"],
+			"outFiles": ["${workspaceFolder}/src/**/*.js"],
 			"outputCapture": "std"
 		}
 	]

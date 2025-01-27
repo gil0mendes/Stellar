@@ -1,5 +1,5 @@
 import async from "async";
-import { join } from "path";
+import { join } from "node:path";
 
 /**
  * Class to manage events.
@@ -228,7 +228,7 @@ class EventsManager {
 			}
 
 			// get all listeners files and load them
-			const listenersFiles = this.api.utils.recursiveDirectoryGlob(listenersFolderPath, "js");
+			const listenersFiles = this.api.utils.recursiveDirectoryGlob(listenersFolderPath);
 
 			for (const listenerPath of listenersFiles) {
 				await this._loadFile(listenerPath);

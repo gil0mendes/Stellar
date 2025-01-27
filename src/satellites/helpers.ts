@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
-import { randomUUID } from "crypto";
-import GenericServer from "../genericServer.js";
+import { randomUUID } from "node:crypto";
+import GenericServer from "../genericServer.ts";
 
 class TestServer extends GenericServer {
 	constructor(api, type, options, attributes) {
@@ -113,9 +112,8 @@ class Helpers {
 	 *
 	 * @param actionName  Action to be executed.
 	 * @param input       Action parameters.
-	 * @param next        Callback function.
 	 */
-	runAction(actionName, input, next) {
+	runAction(actionName, input) {
 		let connection;
 
 		if (typeof input === "function" && !next) {
@@ -132,11 +130,9 @@ class Helpers {
 		connection.params.action = actionName;
 
 		connection.messageCount++;
-		if (typeof next === "function") {
-			connection.actionCallbacks[connection.messageCount] = next;
-		}
 
-		process.nextTick(() => {
+		return new Promise((resolve) => {
+			connection.actionCallbacks[connection.messageCount] = resolve;
 			this.api.servers.servers.testServer.processAction(connection);
 		});
 	}

@@ -1,7 +1,7 @@
-import { describe, beforeAll, afterAll, it, expect } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import Engine from "../../lib/engine";
-import { API } from "../../src/interfaces/api.interface";
+import Engine from "../../src/engine";
+import { API } from "../../src/common/types/api.types.ts";
 const engine = new Engine({ rootPath: `${process.cwd()}/example` });
 
 let api: API;

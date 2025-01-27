@@ -1,4 +1,4 @@
-import async from "async";
+import { isNotNil } from "ramda-adjunct";
 
 /**
  * This class process an action request.
@@ -17,7 +17,6 @@ class ActionProcessor {
 	toRender = true;
 	messageCount = null;
 	params = null;
-	callback = null;
 	validatorErrors = new Map();
 	actionStartTime = null;
 	actionTemplate = null;
@@ -45,14 +44,12 @@ class ActionProcessor {
 	 *
 	 * @param api API reference.
 	 * @param connection Connection object.
-	 * @param callback Callback function.
 	 */
-	constructor(api, connection, callback) {
+	constructor(api, connection) {
 		this.api = api;
 		this.connection = connection;
 		this.messageCount = connection.messageCount;
 		this.params = connection.params;
-		this.callback = callback;
 	}
 
 	/**
@@ -89,7 +86,7 @@ class ActionProcessor {
 	 *
 	 * @param status
 	 */
-	completeAction(status) {
+	completeAction(status?: string | Error) {
 		let error = null;
 
 		// define the action status
@@ -106,7 +103,9 @@ class ActionProcessor {
 		} else if (status === "unknown_action") {
 			error = this.api.config.errors.unknownAction(this.action);
 		} else if (status === "unsupported_server_type") {
-			error = this.api.config.errors.unsupportedServerType(this.connection.type);
+			error = this.api.config.errors.unsupportedServerType(
+				this.connection.type,
+			);
 		} else if (status === "validator_errors") {
 			error = this.api.config.errors.invalidParams(this.validatorErrors);
 		} else if (status === "response_timeout") {
@@ -130,14 +129,10 @@ class ActionProcessor {
 		this.incrementPendingActions(-1);
 		this.duration = new Date().getTime() - this.actionStartTime;
 
-		process.nextTick(() => {
-			if (typeof this.callback === "function") {
-				this.callback(this);
-			}
-		});
-
 		this.working = false;
 		this.logAction(error);
+
+		return this;
 	}
 
 	/**
@@ -153,18 +148,24 @@ class ActionProcessor {
 			logLevel = this.actionTemplate.logLevel;
 		}
 
-		let filteredParams = {};
-		for (let i in this.params) {
-			if (this.api.config.general.filteredParams && this.api.config.general.filteredParams.indexOf(i) >= 0) {
+		const filteredParams = {};
+		for (const i in this.params) {
+			if (
+				this.api.config.general.filteredParams &&
+				this.api.config.general.filteredParams.indexOf(i) >= 0
+			) {
 				filteredParams[i] = "[FILTERED]";
 			} else if (typeof this.params[i] === "string") {
-				filteredParams[i] = this.params[i].substring(0, this.api.config.logger.maxLogStringLength);
+				filteredParams[i] = this.params[i].substring(
+					0,
+					this.api.config.logger.maxLogStringLength,
+				);
 			} else {
 				filteredParams[i] = this.params[i];
 			}
 		}
 
-		let logLine = {
+		const logLine = {
 			to: this.connection.remoteIP,
 			action: this.action,
 			params: JSON.stringify(filteredParams),
@@ -189,18 +190,17 @@ class ActionProcessor {
 
 	/**
 	 * Operations to be performed before the real action execution.
-	 *
-	 * @param callback Callback function.
 	 */
-	preProcessAction(callback) {
+	async preProcessAction() {
 		// if the action is private this can only be executed internally
-		if (this.actionTemplate.private === true && this.connection.type !== "internal") {
-			callback(this.api.config.errors.privateActionCalled(this.actionTemplate.name));
-			return;
+		if (
+			this.actionTemplate.private === true &&
+			this.connection.type !== "internal"
+		) {
+			throw this.api.config.errors.privateActionCalled(this.actionTemplate.name);
 		}
 
-		let processors = [];
-		let processorsNames = this.api.actions.globalMiddleware.slice(0);
+		const processorsNames = this.api.actions.globalMiddleware.slice(0);
 
 		// get action processor names
 		if (this.actionTemplate.middleware) {
@@ -209,25 +209,21 @@ class ActionProcessor {
 			});
 		}
 
-		processorsNames.forEach((name) => {
-			if (typeof this.api.actions.middleware[name].preProcessor === "function") {
-				processors.push((next) => {
-					this.api.actions.middleware[name].preProcessor(this, next);
-				});
+		for (const name of processorsNames) {
+			if (
+				typeof this.api.actions.middleware[name].preProcessor === "function"
+			) {
+				await this.api.actions.middleware[name].preProcessor(this);
 			}
-		});
-
-		async.series(processors, callback);
+		}
 	}
 
 	/**
 	 * Operations to be performed after the action execution.
-	 *
-	 * @param callback
 	 */
-	postProcessAction(callback) {
-		let processors = [];
-		let processorNames = this.api.actions.globalMiddleware.slice(0);
+	postProcessAction() {
+		const processors = [];
+		const processorNames = this.api.actions.globalMiddleware.slice(0);
 
 		if (this.actionTemplate.middleware) {
 			this.actionTemplate.middleware.forEach((m) => {
@@ -235,15 +231,15 @@ class ActionProcessor {
 			});
 		}
 
-		processorNames.forEach((name) => {
-			if (typeof this.api.actions.middleware[name].postProcessor === "function") {
+		for (const name of processorNames) {
+			if (
+				typeof this.api.actions.middleware[name].postProcessor === "function"
+			) {
 				processors.push((next) => {
-					this.api.actions.middleware[name].postProcessor(this, next);
+					this.api.actions.middleware[name].postProcessor(this);
 				});
 			}
-		});
-
-		async.series(processors, callback);
+		}
 	}
 
 	/**
@@ -254,9 +250,9 @@ class ActionProcessor {
 		const toValidate = {};
 
 		// iterate inputs definitions of the called action
-		for (let key in this.actionTemplate.inputs) {
+		for (const key in this.actionTemplate.inputs) {
 			// get input properties
-			let props = this.actionTemplate.inputs[key];
+			const props = this.actionTemplate.inputs[key];
 
 			// default
 			if (this.params[key] === undefined && props.default !== undefined) {
@@ -270,7 +266,11 @@ class ActionProcessor {
 			// format the input to the requested type
 			if (props.format && this.params[key]) {
 				if (typeof props.format === "function") {
-					this.params[key] = props.format.call(this.api, this.params[key], this);
+					this.params[key] = props.format.call(
+						this.api,
+						this.params[key],
+						this,
+					);
 				} else if (props.format === "integer") {
 					this.params[key] = Number.parseInt(this.params[key]);
 				} else if (props.format === "float") {
@@ -280,7 +280,10 @@ class ActionProcessor {
 				}
 
 				if (Number.isNaN(this.params[key])) {
-					this.validatorErrors.set(key, this.api.config.errors.paramInvalidType(key, props.format));
+					this.validatorErrors.set(
+						key,
+						this.api.config.errors.paramInvalidType(key, props.format),
+					);
 				}
 			}
 
@@ -299,7 +302,7 @@ class ActionProcessor {
 
 		// execute all validators. If there is found some error on the validations,
 		// the error map must be attributed to `validatorErrors`
-		let response = this.api.validator.validate(this.params, toValidate);
+		const response = this.api.validator.validate(this.params, toValidate);
 		if (response !== true) {
 			this.validatorErrors = response;
 		}
@@ -308,7 +311,7 @@ class ActionProcessor {
 	/**
 	 * Process the action.
 	 */
-	processAction() {
+	async processAction() {
 		// initialize the processing environment
 		this.actionStartTime = new Date().getTime();
 		this.working = true;
@@ -318,107 +321,105 @@ class ActionProcessor {
 
 		if (this.api.actions.versions[this.action]) {
 			if (!this.params.apiVersion) {
-				this.params.apiVersion =
-					this.api.actions.versions[this.action][this.api.actions.versions[this.action].length - 1];
+				this.params.apiVersion = this.api.actions.versions[this.action][
+					this.api.actions.versions[this.action].length - 1
+				];
 			}
 			this.actionTemplate = this.api.actions.actions[this.action][this.params.apiVersion];
 		}
 
 		if (this.api.status !== "running") {
-			this.completeAction("server_shutting_down");
-		} else if (this.getPendingActionCount(this.connection) > this.api.config.general.simultaneousActions) {
-			this.completeAction("too_many_requests");
+			return this.completeAction("server_shutting_down");
+		} else if (
+			this.getPendingActionCount(this.connection) >
+				this.api.config.general.simultaneousActions
+		) {
+			return this.completeAction("too_many_requests");
 		} else if (!this.action || !this.actionTemplate) {
-			this.completeAction("unknown_action");
+			return this.completeAction("unknown_action");
 		} else if (
 			this.actionTemplate.blockedConnectionTypes &&
-			this.actionTemplate.blockedConnectionTypes.indexOf(this.connection.type) >= 0
+			this.actionTemplate.blockedConnectionTypes.indexOf(
+					this.connection.type,
+				) >= 0
 		) {
-			this.completeAction("unsupported_server_type");
-		} else {
-			try {
-				this.runAction();
-			} catch (err) {
-				this.api.exceptionHandlers.action(err, this, () => this.completeAction("server_error"));
-			}
+			return this.completeAction("unsupported_server_type");
+		}
+
+		try {
+			return this.runAction();
+		} catch (err) {
+			this.api.exceptionHandlers.action(err, this, () => this.completeAction("server_error"));
 		}
 	}
 
 	/**
 	 * Run an action.
 	 */
-	runAction() {
-		this.preProcessAction((error) => {
+	async runAction() {
+		try {
+			await this.preProcessAction();
+
 			// validate the request params with the action requirements
 			this.validateParams();
+		} catch (error) {
+			return this.completeAction(error);
+		}
 
-			if (error) {
-				this.completeAction(error);
-			} else if (this.validatorErrors.size > 0) {
-				this.completeAction("validator_errors");
-			} else if (this.toProcess === true && !error) {
-				// create a timer that will be used to timeout the action if needed. The time timeout is reached a timeout error
-				// is sent to the client.
-				this.timeoutTimer = setTimeout(() => {
-					// finish action with a timeout error
-					this.completeAction("response_timeout");
+		if (this.validatorErrors.size > 0) {
+			return this.completeAction("validator_errors");
+		}
 
-					// ensure that the action wouldn't respond
-					this.errorRendered = true;
-				}, this.api.config.general.actionTimeout);
+		if (!this.toProcess) {
+			return this.completeAction();
+		}
 
-				// execute the action logic
-				const returnVal = this.actionTemplate.run(this.api, this, (error) => {
-					// stop the timeout timer
-					clearTimeout(this.timeoutTimer);
+		// create a timer that will be used to timeout the action if needed. The time timeout is reached a timeout error
+		// is sent to the client.
+		const timeoutPromise = new Promise((_, reject) => {
+			this.timeoutTimer = setTimeout(() => {
+				reject();
 
-					// when the error rendered flag is set we don't send a response
-					if (this.errorRendered) {
-						return;
-					}
+				// finish action with a timeout error
+				this.completeAction("response_timeout");
 
-					// catch the error messages and send to the client an error as a response
-					if (error) {
-						return this.completeAction(error);
-					}
-
-					// execute the post action process
-					this.postProcessAction((error) => this.completeAction(error));
-				});
-
-				// if the returnVal is a Promise we wait for the resolve/rejection and
-				// after that we finish the action execution
-				if (returnVal && typeof returnVal.then === "function") {
-					returnVal
-						// execute the post action process
-						.then(() => {
-							// when the error rendered flag is set we don't send a response
-							if (this.errorRendered) {
-								return;
-							}
-
-							// post process the action
-							this.postProcessAction((error) => this.completeAction(error));
-						})
-
-						// catch error responses
-						.catch((error) => {
-							// when the error rendered flag is set we don't send a response
-							if (this.errorRendered) {
-								return;
-							}
-
-							// complete the action with an error message
-							this.completeAction(error);
-						})
-
-						// stop the timeout timer
-						.then(() => clearTimeout(this.timeoutTimer));
-				}
-			} else {
-				this.completeAction();
-			}
+				// ensure that the action wouldn't respond
+				this.errorRendered = true;
+			}, this.api.config.general.actionTimeout);
 		});
+
+		try {
+			const actionPromise = this.actionTemplate.run(this.api, this);
+
+			const actionResponse = await Promise.race([timeoutPromise, actionPromise]);
+			if (isNotNil(actionResponse)) {
+				Object.assign(this.response, actionResponse);
+			}
+
+			// when the error rendered flag is set we don't send a response
+			if (this.errorRendered) {
+				return;
+			}
+
+			// post process the action
+			const postProcessResponse = await this.postProcessAction();
+			if (isNotNil(postProcessResponse)) {
+				Object.assign(this.response, postProcessResponse);
+			}
+
+			return this.completeAction();
+		} catch (error) {
+			// when the error rendered flag is set we don't send a response
+			if (this.errorRendered) {
+				return;
+			}
+
+			// complete the action with an error message
+			return this.completeAction(error);
+		} finally {
+			// since the action can also fail we need to resolve the
+			clearTimeout(this.timeoutTimer);
+		}
 	}
 }
 

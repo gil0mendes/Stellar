@@ -1,13 +1,10 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
-import { randomUUID } from "crypto";
-import { API } from "./interfaces/api.interface";
-import { ConnectionDetails } from "./interfaces/connection-details";
+import { API } from "./common/types/api.types.ts";
+import { ConnectionDetails } from "./common/types/connection-details.ts";
 
 /**
  * This class represents an active connection.
  */
-export class Connection implements ConnectionDetails {
+export class Connection<C> implements ConnectionDetails<C> {
 	/**
 	 * Api reference.
 	 */
@@ -75,12 +72,17 @@ export class Connection implements ConnectionDetails {
 	/**
 	 * Remote IP address.
 	 */
-	public remoteIP!: string;
+	public remoteHostname!: string;
 
 	/**
 	 * Raw connection.
 	 */
-	public rawConnection: unknown = null;
+	public rawConnection!: C;
+
+	/**
+	 * For the cases where there is a local extension to the request.
+	 */
+	extension?: string;
 
 	/**
 	 * Is used to mark the connection as destroyed.
@@ -99,9 +101,9 @@ export class Connection implements ConnectionDetails {
 	 * @param api Stellar API reference
 	 * @param data hash map
 	 */
-	constructor(api, data) {
+	constructor(api: API, data: ConnectionDetails<C>) {
 		this.api = api;
-		this.setup(data);
+		this.#setup(data);
 
 		// Save this connection on the connection manager
 		this.api.connections.connections[this.id] = this;
@@ -119,12 +121,12 @@ export class Connection implements ConnectionDetails {
 	 *
 	 * @param data
 	 */
-	private setup(data) {
+	#setup(data: ConnectionDetails<C>) {
 		if (data.id) {
 			this.id = data.id;
 		} else {
 			// generate an unique ID for this connection
-			this.id = randomUUID();
+			this.id = crypto.randomUUID();
 		}
 
 		this.connectedAt = new Date().getTime();
@@ -138,10 +140,10 @@ export class Connection implements ConnectionDetails {
 			this[req] = data[req];
 		});
 
-		const enforcedConnectionProperties = ["remotePort", "remoteIP"];
+		const enforcedConnectionProperties = ["remotePort", "remoteHostname"];
 		enforcedConnectionProperties.forEach((req) => {
 			if (data[req] === null || data[req] === undefined) {
-				if (this.api.configs.general.enforceConnectionProperties === true) {
+				if (this.api.config.general.enforceConnectionProperties === true) {
 					throw new Error(`${req} is required to create a new connection object`);
 				} else {
 					data[req] = 0; // TODO: could be a random uuid as well?
@@ -200,7 +202,7 @@ export class Connection implements ConnectionDetails {
 		if (server) {
 			if (server.attributes.logExits === true) {
 				server.log("connection closed", "info", {
-					to: this.remoteIP,
+					to: this.remoteHostname,
 				});
 			}
 
@@ -247,7 +249,7 @@ export class Connection implements ConnectionDetails {
 		if (server && allowedVerbs.indexOf(verb) >= 0) {
 			server.log("verb", "debug", {
 				verb,
-				to: this.remoteIP,
+				to: this.remoteHostname,
 				params: JSON.stringify(words),
 			});
 
@@ -299,7 +301,7 @@ export class Connection implements ConnectionDetails {
 				return {
 					id: this.id,
 					fingerprint: this.fingerprint,
-					remoteIP: this.remoteIP,
+					remoteIP: this.remoteHostname,
 					remotePort: this.remotePort,
 					params: this.params,
 					connectedAt: this.connectedAt,
@@ -324,10 +326,10 @@ export class Connection implements ConnectionDetails {
 				// broadcast the event to the room
 				return this.api.chatRoom.broadcast(this, room, { event, data });
 			} else {
-				throw new Error(this.api.configs.errors.verbNotFound(this, verb));
+				throw new Error(this.api.config.errors.verbNotFound(this, verb));
 			}
 		} else {
-			throw new Error(this.api.configs.errors.verbNotAllowed(this, verb));
+			throw new Error(this.api.config.errors.verbNotAllowed(this, verb));
 		}
 	}
 }

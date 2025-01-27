@@ -1,4 +1,4 @@
-exports.render = _ => `
+exports.render = (_) => `
 {
   "id": "private",
   "name": "Private Module",
@@ -6,4 +6,4 @@ exports.render = _ => `
   "description": "This module exists to store the private project actions and tasks",
   "npmDependencies": {}
 }
-`
+`;

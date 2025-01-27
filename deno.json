@@ -1,0 +1,30 @@
+{
+	"tasks": {
+		"test": {
+			"command": "NODE_ENV=test deno test --allow-read --allow-write --allow-env --allow-ffi --allow-sys --allow-net --no-check "
+		}
+	},
+	"imports": {
+		"@deno-library/compress": "jsr:@deno-library/compress@^0.5.5",
+		"@std/assert": "jsr:@std/assert@^1.0.10",
+		"@std/encoding": "jsr:@std/encoding@^1.0.6",
+		"@std/expect": "jsr:@std/expect@^1.0.10",
+		"@std/http": "jsr:@std/http@^1.0.12",
+		"@std/path": "jsr:@std/path@^1.0.8",
+		"@std/testing": "jsr:@std/testing@^1.0.8"
+	},
+	"compilerOptions": {
+		"strict": true,
+		"strictNullChecks": true,
+		"types": ["node"]
+	},
+	"unstable": ["sloppy-imports"],
+	"fmt": {
+		"indentWidth": 2,
+		"lineWidth": 120,
+		"semiColons": true,
+		"singleQuote": false,
+		"useTabs": true,
+		"proseWrap": "preserve"
+	}
+}

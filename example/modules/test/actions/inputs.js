@@ -8,9 +8,8 @@ export const inputRequire = {
 		},
 	},
 
-	run(api, action, next) {
-		action.response.string = `Input > ${action.params.value}`;
-		next();
+	run(api, action) {
+		return { string: `Input > ${action.params.value}` };
 	},
 };
 
@@ -24,9 +23,8 @@ export const inputDefault = {
 		},
 	},
 
-	run(api, action, next) {
-		action.response.string = `Input > ${action.params.value}`;
-		next();
+	run(api, action) {
+		return { string: `Input > ${action.params.value}` };
 	},
 };
 
@@ -42,9 +40,8 @@ export const inputDefaultFunction = {
 		},
 	},
 
-	run(api, action, next) {
+	run(api, action) {
 		action.response.value = action.params.value;
-		next();
 	},
 };
 
@@ -75,9 +72,8 @@ export const inputValidatorRegex = {
 		},
 	},
 
-	run(api, action, next) {
-		action.response.string = `Input > ${action.params.value}`;
-		next();
+	run(api, action) {
+		return { string: `Input > ${action.params.value}` };
 	},
 };
 
@@ -91,9 +87,8 @@ export const inputValidatorFunction = {
 		},
 	},
 
-	run(api, action, next) {
-		action.response.string = `Input > ${action.params.value}`;
-		next();
+	run(api, action) {
+		return { string: `Input > ${action.params.value}` };
 	},
 };
 
@@ -107,9 +102,8 @@ export const inputValidatorPredefAlpha = {
 		},
 	},
 
-	run(api, action, next) {
-		action.response.string = `Input > ${action.params.value}`;
-		next();
+	run(api, action) {
+		return { string: `Input > ${action.params.value}` };
 	},
 };
 
@@ -123,9 +117,8 @@ export const inputValidatorPredefAlphaNum = {
 		},
 	},
 
-	run(api, action, next) {
-		action.response.string = `Input > ${action.params.value}`;
-		next();
+	run(api, action) {
+		return { string: `Input > ${action.params.value}` };
 	},
 };
 
@@ -138,9 +131,8 @@ export const inputValidatorPredefTest = {
 		},
 	},
 
-	run(api, action, next) {
-		action.response.string = `Input > ${action.params.value}`;
-		next();
+	run(api, action) {
+		return { string: `Input > ${action.params.value}` };
 	},
 };
 
@@ -155,9 +147,8 @@ export const inputValidatorInvalid = {
 		},
 	},
 
-	run(api, action, next) {
-		action.response.string = `Input > ${action.params.value}`;
-		next();
+	run(api, action) {
+		return { string: `Input > ${action.params.value}` };
 	},
 };
 
@@ -171,9 +162,8 @@ export const inputValidatorMultiple = {
 		someField: { validator: "required_if:phone,123" },
 	},
 
-	run(api, action, next) {
-		action.response.success = true;
-		next();
+	run(api, action) {
+		return { success: true };
 	},
 };
 
@@ -198,8 +188,7 @@ export const inputFunctionWithDefault = {
 		},
 	},
 
-	run(api, connection, next) {
+	run(api, connection) {
 		connection.response.params = connection.params;
-		next();
 	},
 };

@@ -14,21 +14,27 @@ function renderInputs(inputs) {
   </thead>
 
   <tbody>
-  ${inputs
-		.map(
-			(input) => `
+  ${
+		inputs
+			.map(
+				(input) => `
   <tr>
     <td>${input.name}</td>
     <td>${input.description}</td>
     <td>${input.default}</td>
     <td>
       <ul class="validators">
-        ${input.validators ? input.validators.map((validator) => `<li class="${validator.type}">${validator.value}</li>`).join("") : ""}
+        ${
+					input.validators
+						? input.validators.map((validator) => `<li class="${validator.type}">${validator.value}</li>`).join("")
+						: ""
+				}
       </ul>
     </td>
   </tr>`,
-		)
-		.join("")}
+			)
+			.join("")
+	}
   </tbody>
 </table>`;
 }

@@ -1,5 +1,4 @@
-// module dependencies
-import path from "path";
+import * as path from "@std/path";
 
 /**
  * Manager for server instances.
@@ -32,19 +31,14 @@ class Servers {
 	 */
 	async loadServers() {
 		// get the list of servers to load
-		let serversFiles = this.api.utils.recursiveDirectoryGlob(path.resolve(`${import.meta.dirname}/../servers`));
+		const serversFiles = this.api.utils.recursiveDirectoryGlob(path.resolve(`${import.meta.dirname}/../servers`));
 
-		for (let file of serversFiles) {
-			let parts = file.split(/[\/\\]+/);
-			let serverName = parts[parts.length - 1].split(".")[0];
-
-			// only load .js files (in debug we also have .map files)
-			if (parts[parts.length - 1].match(".map$")) {
-				continue;
-			}
+		for (const file of serversFiles) {
+			const parts = file.split(/[\/\\]+/);
+			const serverName = parts[parts.length - 1].split(".")[0];
 
 			// get server options if exists
-			let options = this.api.config.servers[serverName];
+			const options = this.api.config.servers[serverName];
 
 			// only load the server if it's enabled
 			if (options?.enable === true) {
@@ -61,7 +55,7 @@ class Servers {
 	 */
 	async startServers() {
 		for (const serverName in this.servers) {
-			let server = this.servers[serverName];
+			const server = this.servers[serverName];
 
 			// only load the server if the server is enabled
 			if (server.options.enable !== true) {
@@ -84,7 +78,7 @@ class Servers {
 				await server.start();
 				this.api.log(`Server started: ${serverName}`, "debug");
 			} catch (error) {
-				this.api.log(`Failed to start server "${serverName}"`, "emerg");
+				this.api.log(`Failed to start server "${serverName}"`, "emerg", error);
 			}
 		}
 	}
@@ -94,7 +88,7 @@ class Servers {
 	 */
 	async stopServers() {
 		for (const serverName of Object.keys(this.servers)) {
-			let server = this.servers[serverName];
+			const server = this.servers[serverName];
 
 			// check if the server are enable
 			if ((server && server.options.enable === true) || !server) {

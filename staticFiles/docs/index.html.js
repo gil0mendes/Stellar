@@ -48,15 +48,17 @@ export const render = (data) => `
             </tr>
           </thead>
           <tbody>
-            ${data.tasks.map(
-							(task) => `
+            ${
+	data.tasks.map(
+		(task) => `
             <tr>
               <td>${task.name}</td>
               <td>${task.description}</td>
               <td>${task.frequency}</td>
             </tr>
             `,
-						)}
+	)
+}
           </tbody>
         </table>
       </div>

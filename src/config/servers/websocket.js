@@ -42,10 +42,20 @@ export default {
 				// WebSocket server options
 				// ---------------------------------------------------------------------
 				server: {
+					transformer: "websockets",
 					// this disable Primus warning on cluster environments
 					iknowclusterwillbreakconnections: true,
 				},
 			};
+		},
+	},
+};
+
+// FIXME: we need to fix the webserver code
+export const test = {
+	servers: {
+		websocket: {
+			enable: false,
 		},
 	},
 };

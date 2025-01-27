@@ -1,41 +1,40 @@
 {
-  "parser": "@typescript-eslint/parser",
-  "root": true,
+	"parser": "@typescript-eslint/parser",
+	"root": true,
 
-  "env": {
-    "browser": false,
-    "node": true,
-    "es2021": true
-  },
+	"env": {
+		"browser": false,
+		"node": true,
+		"es2021": true
+	},
 
-  "extends": [
-    "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:@typescript-eslint/recommended",
-    "plugin:prettier/recommended"
-  ],
+	"extends": [
+		"plugin:@typescript-eslint/eslint-recommended",
+		"plugin:@typescript-eslint/recommended"
+	],
 
-  "ignorePatterns": ["**/node_modules", "**/dits", "src/client.js"],
-  "plugins": ["@typescript-eslint", "prettier", "unused-imports"],
-  "rules": {
-    "prettier/prettier": "error",
-    "prefer-template": "error",
+	"ignorePatterns": ["**/node_modules", "**/dits", "src/client.js"],
+	"plugins": ["@typescript-eslint", "unused-imports"],
+	"rules": {
+		"prefer-template": "error",
 
-    "no-unused-vars": "off",
-    "unused-imports/no-unused-imports": "error",
-    "unused-imports/no-unused-vars": [
-      "warn",
-      {
-        "vars": "all",
-        "varsIgnorePattern": "^_",
-        "args": "after-used",
-        "argsIgnorePattern": "^_"
-      }
-    ],
+		"no-unused-vars": "off",
+		"@typescript-eslint/no-unused-vars": "off",
+		"unused-imports/no-unused-imports": "error",
+		"unused-imports/no-unused-vars": [
+			"warn",
+			{
+				"vars": "all",
+				"varsIgnorePattern": "^_",
+				"args": "after-used",
+				"argsIgnorePattern": "^_"
+			}
+		],
 
-    "arrow-parens": 0,
-    "generator-star-spacing": 0,
-    "no-useless-escape": 0,
-    "valid-typeof": 0,
-    "standard/no-callback-literal": 0
-  }
+		"arrow-parens": 0,
+		"generator-star-spacing": 0,
+		"no-useless-escape": 0,
+		"valid-typeof": 0,
+		"standard/no-callback-literal": 0
+	}
 }

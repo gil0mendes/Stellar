@@ -41,8 +41,9 @@ export default {
 			},
 		};
 
-		const RedisConstructor =
-			process.env.FAKEREDIS === "false" || process.env.REDIS_HOST !== undefined ? IORedis : MockRedis;
+		const RedisConstructor = process.env.FAKEREDIS === "false" || process.env.REDIS_HOST !== undefined
+			? IORedis
+			: MockRedis;
 
 		return {
 			_toExpand: false,

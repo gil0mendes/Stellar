@@ -1,0 +1,57 @@
+name: Quality
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - run: deno fmt --check
+
+      - run: deno lint
+
+  test:
+    runs-on: ubuntu-latest
+    env:
+      DENO_DIR: deno-cache-dir
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Cache Deno dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.DENO_DIR }}
+            .node_modules
+          key: ${{ hashFiles('deno.lock') }}
+
+      - name: Install Node dependencies
+        run: deno install
+
+      - run: deno test --allow-all --coverage=cov/
+
+  complete:
+    permissions:
+      contents: none
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - run: echo "Done! 🙌"

@@ -1,18 +1,77 @@
-import { describe, beforeAll, afterAll, it, expect, beforeEach, afterEach } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from "@std/testing/bdd";
+import { expect } from "@std/expect";
+import { assertSpyCall, spy } from "@std/testing/mock";
+import { assert } from "@std/assert";
 
-import Engine from "../../lib/engine";
-import { connect } from "net";
-import { randomUUID } from "crypto";
-import { API } from "../../src/interfaces/api.interface";
+import Engine from "../../src/engine.ts";
+import { randomUUID } from "node:crypto";
+import { API } from "../../src/common/types/api.types.ts";
+import { head } from "ramda";
+import { sleep } from "../../src/utils.ts";
+import { assertRejects } from "jsr:@std/assert@^1.0.10/rejects";
 
-const engine = new Engine({ rootPath: `${process.cwd()}/example` });
+/**
+ * Time to wait for a response, in ms.
+ */
+const TIMEOUT = 3000;
+
+const engine = new Engine({ rootPath: `${Deno.cwd()}/example` });
 
 let api: API;
 
 // TCP instance clients
-let client1;
-let client2;
-let client3;
+let client1: Deno.TcpConn;
+let client2: Deno.TcpConn;
+let client3: Deno.TcpConn;
+
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+const readSocket = async (client: Deno.TcpConn, delimiter = "\r\n") => {
+	let timerId: number = 0;
+
+	// create a timeout promise for when the server doesn't respond in time
+	const timeoutPromise = new Promise<Uint8Array>((_, reject) => {
+		timerId = setTimeout(() => reject(new Error("Timeout reached")), TIMEOUT);
+	});
+
+	// create read promise
+	const readPromise = (async () => {
+		const buffer = new Uint8Array(1024);
+		const n = await client.read(buffer);
+		if (n === null) {
+			throw new Error("Connection closed by the server");
+		}
+
+		return buffer.slice(0, n);
+	})();
+
+	const rawData = await Promise.race([readPromise, timeoutPromise]);
+
+	// cancel timeout timer
+	clearTimeout(timerId);
+
+	const data = decoder.decode(rawData);
+	const splittedResponse = data.split(delimiter);
+	const response = head(splittedResponse);
+
+	assert(response, "we need at least one response");
+
+	let parsed;
+	try {
+		parsed = JSON.parse(response);
+	} catch (_) {
+		// The message isn't a JSON so return the data
+		return response;
+	}
+
+	// throw an exception when the server response it's an error
+	if ("error" in parsed) {
+		throw parsed.error;
+	}
+
+	return parsed;
+};
 
 /**
  * This function allows to make a socket request.
@@ -21,88 +80,49 @@ let client3;
  * @param message     Message to be sent.
  * @param delimiter   Message delimiter, by default `\r\n`
  */
-const makeSocketRequest = async (client, message, delimiter = "\r\n") => {
-	const lines = [];
-	let counter = 0;
+const makeSocketRequest = (client: Deno.TcpConn, message: string, delimiter = "\r\n") => {
+	// send the new message
+	const encodedMessage = encoder.encode(`${message}${delimiter}`);
+	client.write(encodedMessage);
 
-	// function to split by lines
-	const rsp = (d) => {
-		d.split(delimiter).forEach((line) => lines.push(line));
-		lines.push();
-	};
-
-	return new Promise((resolve, rejects) => {
-		const responder = () => {
-			if (lines.length === 0 && counter < 20) {
-				counter++;
-				return setTimeout(responder, 10);
-			}
-
-			// get last line
-			let lastLine = lines[lines.length - 1];
-
-			// if the last line are empty get -2 position
-			if (lastLine === "") {
-				lastLine = lines[lines.length - 2];
-			}
-
-			let parsed = null;
-
-			try {
-				parsed = JSON.parse(lastLine);
-			} catch (e) {}
-
-			// remove the event listener from the client
-			client.removeListener("data", rsp);
-
-			!!parsed.error ? rejects(parsed.error) : resolve(parsed);
-		};
-
-		// define a timeout
-		setTimeout(responder, 50);
-
-		// add a new listener to catch the response message
-		client.on("data", rsp);
-
-		// send the new message
-		client.write(message + delimiter);
-	});
+	return readSocket(client, delimiter);
 };
 
 const connectClients = async () => {
-	return new Promise((resolve) => {
-		// resolve the promise after 1 second
-		setTimeout(resolve, 1000);
-
-		// create three clients
-		client1 = connect(api.config.servers.tcp.port, () => {
-			client1.setEncoding("utf8");
-		});
-
-		client2 = connect(api.config.servers.tcp.port, () => {
-			client2.setEncoding("utf8");
-		});
-		client3 = connect(api.config.servers.tcp.port, () => {
-			client3.setEncoding("utf8");
-		});
+	client1 = await Deno.connect({
+		port: api.config.servers.tcp.port,
+		transport: "tcp",
 	});
+	// Script welcome message
+	await readSocket(client1);
+
+	client2 = await Deno.connect({
+		port: api.config.servers.tcp.port,
+		transport: "tcp",
+	});
+	// Script welcome message
+	await readSocket(client2);
+
+	client3 = await Deno.connect({
+		port: api.config.servers.tcp.port,
+		transport: "tcp",
+	});
+	// Script welcome message
+	await readSocket(client3);
 };
 
 describe("Servers: TCP", function () {
 	beforeAll(async () => {
 		api = await engine.start();
 
-		// connect the clients
 		await connectClients();
 	});
 
 	afterAll(async () => {
-		// close all the tree sockets
-		client1.write("quit\r\n");
-		client2.write("quit\r\n");
-		client3.write("quit\r\n");
+		client1.close();
+		client2.close();
+		client3.close();
 
-		// finish the Stellar instance execution
 		await engine.stop();
 	});
 
@@ -165,8 +185,8 @@ describe("Servers: TCP", function () {
 		const response = await makeSocketRequest(client2, "detailsView");
 
 		expect(response.status).toBe("OK");
-		expect(response.data).toBeTypeOf("object");
-		expect(response.data.params).toBeTypeOf("object");
+		expect(response.data).toBeDefined();
+		expect(response.data.params).toBeDefined();
 	});
 
 	it("params can update", async () => {
@@ -186,33 +206,30 @@ describe("Servers: TCP", function () {
 		});
 	});
 
-	it("a new param can be added", async () => {
+	it("can add individual parameters and call the action", async () => {
+		// create a parameter
 		await expect(makeSocketRequest(client1, "paramAdd key=testKey")).resolves.toMatchObject({
 			status: "OK",
 		});
-	});
 
-	it("a new param can be viewed once added", async () => {
+		// view the parameter
 		await expect(makeSocketRequest(client1, "paramView key")).resolves.toMatchObject({
 			data: "testKey",
 		});
-	});
 
-	it("another new param can be added", async () => {
+		// add another parameter
 		await expect(makeSocketRequest(client1, "paramAdd value=test123")).resolves.toMatchObject({
 			status: "OK",
 		});
-	});
 
-	it("action will work once all the needed params are added", async () => {
+		// Call the action
 		await expect(makeSocketRequest(client1, "cacheTest")).resolves.toMatchObject({
 			cacheTestResults: {
 				saveResp: true,
 			},
 		});
-	});
 
-	it("params are sticky between actions", async () => {
+		// params are sticky between actions
 		await expect(makeSocketRequest(client1, "cacheTest")).resolves.toMatchObject({
 			cacheTestResults: {
 				loadResp: {
@@ -230,9 +247,8 @@ describe("Servers: TCP", function () {
 				},
 			},
 		});
-	});
 
-	it("only params sent is a JSON block are used", async () => {
+		// only params sent is a JSON block are used
 		await expect(
 			makeSocketRequest(client1, JSON.stringify({ action: "cacheTest", params: { key: "someOtherKey" } })),
 		).rejects.toMatchObject({
@@ -241,42 +257,25 @@ describe("Servers: TCP", function () {
 	});
 
 	it("will limit how many simultaneous connection a client can have", async () => {
-		client1.write(`${JSON.stringify({ action: "sleep", params: { sleepDuration: 500 } })}\r\n`);
-		client1.write(`${JSON.stringify({ action: "sleep", params: { sleepDuration: 600 } })}\r\n`);
-		client1.write(`${JSON.stringify({ action: "sleep", params: { sleepDuration: 700 } })}\r\n`);
-		client1.write(`${JSON.stringify({ action: "sleep", params: { sleepDuration: 800 } })}\r\n`);
-		client1.write(`${JSON.stringify({ action: "sleep", params: { sleepDuration: 900 } })}\r\n`);
-		client1.write(`${JSON.stringify({ action: "sleep", params: { sleepDuration: 1000 } })}\r\n`);
+		const response1 = makeSocketRequest(client1, JSON.stringify({ action: "sleep", params: { sleepDuration: 500 } }));
+		const response2 = makeSocketRequest(client1, JSON.stringify({ action: "sleep", params: { sleepDuration: 600 } }));
+		const response3 = makeSocketRequest(client1, JSON.stringify({ action: "sleep", params: { sleepDuration: 700 } }));
+		const response4 = makeSocketRequest(client1, JSON.stringify({ action: "sleep", params: { sleepDuration: 800 } }));
+		const response5 = makeSocketRequest(client1, JSON.stringify({ action: "sleep", params: { sleepDuration: 900 } }));
+		const response6 = makeSocketRequest(client1, JSON.stringify({ action: "sleep", params: { sleepDuration: 1000 } }));
 
-		const responses = [];
+		const responses = await Promise.allSettled([response1, response2, response3, response4, response5, response6]);
 
-		return new Promise((resolve) => {
-			const checkResponses = (data) => {
-				data.split("\n").forEach((line) => {
-					if (line.length > 0) {
-						responses.push(JSON.parse(line));
-					}
-				});
+		for (const i in responses) {
+			const response = responses[i];
 
-				if (responses.length === 6) {
-					client1.removeListener("data", checkResponses);
-
-					for (const i in responses) {
-						const response = responses[i];
-
-						if (i === "0") {
-							expect(response.error.code).toBe("007");
-						} else {
-							expect(response.error).toBeUndefined();
-						}
-					}
-
-					resolve(null);
-				}
-			};
-
-			client1.on("data", checkResponses);
-		});
+			if (i === "0") {
+				const rejectedResponse = response as PromiseRejectedResult;
+				expect(rejectedResponse.reason.code).toBe("007");
+			} else {
+				expect(response.status).toBe("fulfilled");
+			}
+		}
 	});
 
 	describe("with a custom max data length", () => {
@@ -299,7 +298,7 @@ describe("Servers: TCP", function () {
 
 			await expect(makeSocketRequest(client1, JSON.stringify(msg))).rejects.toMatchObject({
 				code: "008",
-				message: "Data length is too big (64 received/449 max)",
+				message: "Data length is too big (64 received/451 max)",
 			});
 		});
 	});
@@ -326,37 +325,10 @@ describe("Servers: TCP", function () {
 	});
 
 	describe("chat", function () {
-		beforeAll(() => {
-			api.chatRoom.addMiddleware({
-				name: "join chat middleware",
-				join: (connection, room, callback) => {
-					api.chatRoom.emit(room, "message", `I have entered the room: ${connection.id}`).then((_) => {
-						callback();
-					});
-				},
-			});
-
-			api.chatRoom.addMiddleware({
-				name: "leave chat middleware",
-				leave: (connection, room, callback) => {
-					api.chatRoom.emit(room, "message", `I have left the room: ${connection.id}`).then((_) => {
-						callback();
-					});
-				},
-			});
-		});
-
-		afterAll(() => {
-			api.chatRoom.middleware = {};
-			api.chatRoom.globalMiddleware = [];
-		});
-
 		beforeEach(async () => {
 			await makeSocketRequest(client1, "roomJoin defaultRoom");
 			await makeSocketRequest(client2, "roomJoin defaultRoom");
 			await makeSocketRequest(client3, "roomJoin defaultRoom");
-
-			return new Promise((resolve) => setTimeout(resolve, 250));
 		});
 
 		afterEach(async () => {
@@ -365,23 +337,17 @@ describe("Servers: TCP", function () {
 				await makeSocketRequest(client2, `roomLeave ${room}`);
 				await makeSocketRequest(client3, `roomLeave ${room}`);
 			}
-
-			return new Promise((resolve) => setTimeout(resolve, 250));
 		});
 
 		it("clients are in the default room", async () => {
 			await expect(makeSocketRequest(client1, "roomView defaultRoom")).resolves.toMatchObject({
-				data: {
-					room: "defaultRoom",
-				},
+				data: { room: "defaultRoom" },
 			});
 		});
 
 		it("clients can view additional info about rooms they are in", async () => {
 			await expect(makeSocketRequest(client1, "roomView defaultRoom")).resolves.toMatchObject({
-				data: {
-					membersCount: 3,
-				},
+				data: { membersCount: 3 },
 			});
 		});
 
@@ -402,6 +368,7 @@ describe("Servers: TCP", function () {
 		it("connections in the first room see the count go down", async () => {
 			await makeSocketRequest(client1, "roomJoin otherRoom");
 			await makeSocketRequest(client1, "roomLeave defaultRoom");
+
 			await expect(makeSocketRequest(client2, "roomView defaultRoom")).resolves.toMatchObject({
 				data: {
 					room: "defaultRoom",
@@ -409,32 +376,84 @@ describe("Servers: TCP", function () {
 				},
 			});
 		});
+
+		describe("middleware", () => {
+			const joinFn = spy();
+			const leaveFn = spy();
+
+			beforeAll(() => {
+				api.chatRoom.addMiddleware({
+					name: "join chat middleware",
+					join: (connection, room, callback) => {
+						joinFn();
+
+						api.chatRoom.emit(room, "message", `I have entered the room: ${connection.id}`).then((_) => {
+							callback();
+						});
+					},
+				});
+
+				api.chatRoom.addMiddleware({
+					name: "leave chat middleware",
+					leave: (connection, room, callback) => {
+						leaveFn();
+
+						api.chatRoom.emit(room, "message", `I have left the room: ${connection.id}`).then((_) => {
+							callback();
+						});
+					},
+				});
+			});
+
+			afterAll(() => {
+				api.chatRoom.middleware = {};
+				api.chatRoom.globalMiddleware = [];
+			});
+
+			it("joining and leaving a run executes the middleware", async () => {
+				// join a run an ensure that the middleware is called
+				assert(await makeSocketRequest(client1, "roomJoin otherRoom"));
+				assertSpyCall(joinFn, 0);
+
+				// consume the join message
+				await readSocket(client1);
+
+				// leave a run an ensure that the middleware is called
+				await expect(makeSocketRequest(client1, "roomLeave otherRoom")).resolves.toBeTruthy();
+				assertSpyCall(leaveFn, 0);
+			});
+		});
 	});
 
 	describe("disconnect", function () {
-		afterAll(async () => {
-			await connectClients();
+		let innerClient: Deno.TcpConn;
+
+		beforeAll(async () => {
+			innerClient = await Deno.connect({
+				port: api.config.servers.tcp.port,
+				transport: "tcp",
+			});
+			await readSocket(innerClient);
 		});
 
+		afterAll(() => innerClient.close());
+
 		it("Server can disconnect a client", async () => {
-			await expect(makeSocketRequest(client1, "status")).resolves.toMatchObject({
+			await expect(makeSocketRequest(innerClient, "status")).resolves.toMatchObject({
 				id: "test-server",
 			});
 
-			expect(client1.readable).toBeTruthy();
-			expect(client1.writable).toBeTruthy();
+			expect(innerClient.readable.locked).toBeFalsy();
+			expect(innerClient.writable.locked).toBeFalsy();
 
-			for (const id in api.connections.connections) {
-				api.connections.connections[id].destroy();
-			}
+			const connection = Object.values(api.connections.connections).find(
+				(curConnection: Deno.Conn<Deno.TcpConn>) => curConnection.remotePort === innerClient.localAddr.port,
+			);
+			connection.destroy();
 
-			return new Promise((resolve) => {
-				setTimeout(() => {
-					expect(client1.readable).toBeFalsy();
-					expect(client1.writable).toBeFalsy();
-					resolve(null);
-				}, 100);
-			});
+			await sleep(100);
+
+			await assertRejects(() => readSocket(innerClient), "Connection closed by the server");
 		});
 	});
 });

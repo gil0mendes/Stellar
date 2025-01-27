@@ -87,7 +87,7 @@ $ npm test
 
 - **`example`**: contains a sample application to be used in the test environment and as an example for developers.
 
-- **`test`**: contains all testes. The unit testes are run using [Vitest](https://vitest.dev/).
+- **`test`**: contains all testes. The unit and integration tests are run using Deno itself.
 
 - **`src`**: contains the source code, obviously. The codebase is written in ES6.
 
